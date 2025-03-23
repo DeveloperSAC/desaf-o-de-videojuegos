@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import { getGameDetails } from "../../api";
+import { getGameDetails } from "../../services/api"; // Ruta ajustada
 import styled from "styled-components";
+
+// Resto del código permanece igual...
 
 const DetalleJuego = () => {
   const { id } = useParams();

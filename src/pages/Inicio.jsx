@@ -1,8 +1,9 @@
 import styled from "styled-components";
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { getGames } from "../../api";
-import PanelFiltros from "../Filtros/PanelFiltros";
+import { getGames } from "../services/api";
+import PanelFiltros from "../components/Filtros/PanelFiltros";
+
 
 const Inicio = () => {
   const [juegos, setJuegos] = useState([]);

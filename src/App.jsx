@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Inicio from "./componentes/Inicio/Inicio";
-import DetalleJuego from "./componentes/DetalleJuego/DetalleJuego";
+import Inicio from "./pages/Inicio";
+import DetalleJuego from "./components/Juego/DetalleJuego";
 
 function App() {
   return (
@@ -14,3 +14,4 @@ function App() {
 }
 
 export default App;
+
