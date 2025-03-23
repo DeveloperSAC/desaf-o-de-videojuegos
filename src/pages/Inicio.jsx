@@ -3,11 +3,11 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { getGames } from "../services/api";
 import PanelFiltros from "../components/Filtros/PanelFiltros";
-
+import Buscador from '../components/BarraBusqueda/Buscador';
+import Spinner from '../components/UI/Spinner';
 const Inicio = () => {
   const [juegos, setJuegos] = useState([]);
   const [cargando, setCargando] = useState(true);
-  // Nuevos estados para manejar errores y casos sin resultados
   const [error, setError] = useState(null);
   const [sinResultados, setSinResultados] = useState(false);
 
@@ -32,26 +32,32 @@ const Inicio = () => {
     setCargando(true);
     setError(null);
     setSinResultados(false);
-    
-    // Parámetros para la API RAWG
+
     const params = {
       ordering: "-metacritic",
       page_size: 20,
     };
-    
-    // Mapeo de filtros a parámetros de la API
+
     if (filtros.year) {
       params.dates = `${filtros.year}-01-01,${filtros.year}-12-31`;
     }
-    
+
     if (filtros.genre) {
       params.genres = filtros.genre;
     }
-    
+
     if (filtros.platform) {
       params.platforms = filtros.platform;
     }
-    
+
+    if (filtros.tag) {
+      params.tags = filtros.tag;
+    }
+
+    if (filtros.developer) {
+      params.developers = filtros.developer;
+    }
+
     getGames(params)
       .then((data) => {
         setJuegos(data.results);
@@ -64,14 +70,37 @@ const Inicio = () => {
       .finally(() => setCargando(false));
   };
 
-  // Contenido mejorado con mensajes para diferentes estados
-  if (cargando) return <LoadingMessage>Cargando juegos...</LoadingMessage>;
-  
+  const manejarBusqueda = (termino) => {
+    setCargando(true);
+    setError(null);
+    setSinResultados(false);
+
+    const params = {
+      ordering: "-metacritic",
+      page_size: 20,
+      search: termino,
+    };
+
+    getGames(params)
+      .then((data) => {
+        setJuegos(data.results);
+        setSinResultados(data.results.length === 0);
+      })
+      .catch((error) => {
+        console.error("Error en la búsqueda:", error);
+        setError("No pudimos realizar la búsqueda. Por favor, intenta de nuevo.");
+      })
+      .finally(() => setCargando(false));
+  };
+
+  // Actualiza la condición de carga
+  if (cargando) return <Spinner height="300px" />;
   if (error) return <ErrorMessage>{error}</ErrorMessage>;
 
   return (
     <Container>
       <Title>Mejores Videojuegos</Title>
+      <Buscador onBuscar={manejarBusqueda} />
       <PanelFiltros onApplyFilters={manejarFiltros} />
       
       {sinResultados ? (
@@ -99,7 +128,7 @@ const Inicio = () => {
   );
 };
 
-// Mantengo tus estilos actuales
+// Estilos
 const Container = styled.div`
   padding: 20px;
   max-width: 1200px;
@@ -166,7 +195,6 @@ const DetailsButton = styled(Link)`
   }
 `;
 
-// Nuevos estilos para mensajes
 const LoadingMessage = styled.div`
   text-align: center;
   padding: 50px;
