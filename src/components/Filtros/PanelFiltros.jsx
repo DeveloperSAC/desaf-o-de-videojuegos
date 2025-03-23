@@ -20,6 +20,17 @@ const PanelFiltros = ({ onApplyFilters }) => {
     e.preventDefault();
     onApplyFilters(filtros); // Envía los filtros al componente padre
   };
+  
+  // Nueva función para limpiar filtros
+  const limpiarFiltros = () => {
+    const filtrosLimpios = {
+      year: "",
+      genre: "",
+      platform: "",
+    };
+    setFiltros(filtrosLimpios);
+    onApplyFilters(filtrosLimpios);
+  };
 
   return (
     <FilterContainer onSubmit={aplicarFiltros}>
@@ -30,6 +41,8 @@ const PanelFiltros = ({ onApplyFilters }) => {
           <option value="2023">2023</option>
           <option value="2022">2022</option>
           <option value="2021">2021</option>
+          <option value="2020">2020</option>
+          <option value="2019">2019</option>
         </FilterSelect>
       </FilterLabel>
 
@@ -40,6 +53,8 @@ const PanelFiltros = ({ onApplyFilters }) => {
           <option value="action">Acción</option>
           <option value="adventure">Aventura</option>
           <option value="rpg">RPG</option>
+          <option value="shooter">Shooter</option>
+          <option value="strategy">Estrategia</option>
         </FilterSelect>
       </FilterLabel>
 
@@ -47,18 +62,25 @@ const PanelFiltros = ({ onApplyFilters }) => {
         Plataforma:
         <FilterSelect name="platform" value={filtros.platform} onChange={cambiarFiltro}>
           <option value="">Todas</option>
-          <option value="pc">PC</option>
-          <option value="playstation">PlayStation</option>
-          <option value="xbox">Xbox</option>
+          <option value="4">PC</option>
+          <option value="187">PlayStation 5</option>
+          <option value="18">PlayStation 4</option>
+          <option value="1">Xbox One</option>
+          <option value="7">Nintendo Switch</option>
         </FilterSelect>
       </FilterLabel>
 
-      <FilterButton type="submit">Aplicar Filtros</FilterButton>
+      <ButtonsContainer>
+        <FilterButton type="submit">Aplicar Filtros</FilterButton>
+        <ClearButton type="button" onClick={limpiarFiltros}>
+          Limpiar Filtros
+        </ClearButton>
+      </ButtonsContainer>
     </FilterContainer>
   );
 };
 
-// Estilos con styled-components
+// Mantengo tus estilos actuales
 const FilterContainer = styled.form`
   display: flex;
   justify-content: space-between;
@@ -67,6 +89,11 @@ const FilterContainer = styled.form`
   border-radius: 10px;
   margin-bottom: 20px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  
+  @media (max-width: 768px) {
+    flex-direction: column;
+    gap: 10px;
+  }
 `;
 
 const FilterLabel = styled.label`
@@ -94,6 +121,28 @@ const FilterButton = styled.button`
 
   &:hover {
     background: #0056b3;
+  }
+`;
+
+// Nuevos estilos para los botones
+const ButtonsContainer = styled.div`
+  display: flex;
+  gap: 10px;
+  align-items: center;
+`;
+
+const ClearButton = styled.button`
+  background: #dc3545;
+  color: white;
+  padding: 8px 15px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.3s;
+
+  &:hover {
+    background: #c82333;
   }
 `;
 

@@ -4,18 +4,22 @@ import { Link } from "react-router-dom";
 import { getGames } from "../services/api";
 import PanelFiltros from "../components/Filtros/PanelFiltros";
 
-
 const Inicio = () => {
   const [juegos, setJuegos] = useState([]);
   const [cargando, setCargando] = useState(true);
+  // Nuevos estados para manejar errores y casos sin resultados
+  const [error, setError] = useState(null);
+  const [sinResultados, setSinResultados] = useState(false);
 
   useEffect(() => {
     const cargarJuegos = async () => {
       try {
         const data = await getGames({ ordering: "-metacritic", page_size: 20 });
         setJuegos(data.results);
+        setSinResultados(data.results.length === 0);
       } catch (error) {
         console.error("Error cargando juegos:", error);
+        setError("No pudimos cargar los juegos. Por favor, intenta de nuevo.");
       } finally {
         setCargando(false);
       }
@@ -26,38 +30,76 @@ const Inicio = () => {
 
   const manejarFiltros = (filtros) => {
     setCargando(true);
+    setError(null);
+    setSinResultados(false);
+    
+    // Parámetros para la API RAWG
     const params = {
       ordering: "-metacritic",
       page_size: 20,
-      ...filtros,
     };
+    
+    // Mapeo de filtros a parámetros de la API
+    if (filtros.year) {
+      params.dates = `${filtros.year}-01-01,${filtros.year}-12-31`;
+    }
+    
+    if (filtros.genre) {
+      params.genres = filtros.genre;
+    }
+    
+    if (filtros.platform) {
+      params.platforms = filtros.platform;
+    }
+    
     getGames(params)
-      .then((data) => setJuegos(data.results))
-      .catch((error) => console.error("Error aplicando filtros:", error))
+      .then((data) => {
+        setJuegos(data.results);
+        setSinResultados(data.results.length === 0);
+      })
+      .catch((error) => {
+        console.error("Error aplicando filtros:", error);
+        setError("No pudimos aplicar los filtros. Por favor, intenta de nuevo.");
+      })
       .finally(() => setCargando(false));
   };
 
-  if (cargando) return <div>Cargando juegos...</div>;
+  // Contenido mejorado con mensajes para diferentes estados
+  if (cargando) return <LoadingMessage>Cargando juegos...</LoadingMessage>;
+  
+  if (error) return <ErrorMessage>{error}</ErrorMessage>;
 
   return (
     <Container>
       <Title>Mejores Videojuegos</Title>
       <PanelFiltros onApplyFilters={manejarFiltros} />
-      <GameList>
-        {juegos.map((juego) => (
-          <GameItem key={juego.id}>
-            <GameImage src={juego.background_image} alt={juego.name} />
-            <GameTitle>{juego.name}</GameTitle>
-            <p>Puntuación: {juego.metacritic}</p>
-            <DetailsButton to={`/juego/${juego.id}`}>Detalles</DetailsButton>
-          </GameItem>
-        ))}
-      </GameList>
+      
+      {sinResultados ? (
+        <NoResultsContainer>
+          <NoResultsMessage>
+            No se encontraron juegos con los filtros seleccionados.
+          </NoResultsMessage>
+          <ResetButton onClick={() => manejarFiltros({})}>
+            Ver todos los juegos
+          </ResetButton>
+        </NoResultsContainer>
+      ) : (
+        <GameList>
+          {juegos.map((juego) => (
+            <GameItem key={juego.id}>
+              <GameImage src={juego.background_image} alt={juego.name} />
+              <GameTitle>{juego.name}</GameTitle>
+              <p>Puntuación: {juego.metacritic || "No disponible"}</p>
+              <DetailsButton to={`/juego/${juego.id}`}>Detalles</DetailsButton>
+            </GameItem>
+          ))}
+        </GameList>
+      )}
     </Container>
   );
 };
 
-// Estilos con styled-components
+// Mantengo tus estilos actuales
 const Container = styled.div`
   padding: 20px;
   max-width: 1200px;
@@ -116,6 +158,53 @@ const DetailsButton = styled(Link)`
   padding: 8px 12px;
   text-decoration: none;
   border-radius: 5px;
+  font-size: 14px;
+  transition: background 0.3s;
+
+  &:hover {
+    background: #0056b3;
+  }
+`;
+
+// Nuevos estilos para mensajes
+const LoadingMessage = styled.div`
+  text-align: center;
+  padding: 50px;
+  font-size: 18px;
+  color: #666;
+`;
+
+const ErrorMessage = styled.div`
+  background: #ffebee;
+  color: #c62828;
+  padding: 15px;
+  border-radius: 8px;
+  text-align: center;
+  margin: 20px auto;
+  max-width: 800px;
+`;
+
+const NoResultsContainer = styled.div`
+  text-align: center;
+  padding: 30px;
+  background: #fff8e1;
+  border-radius: 8px;
+  margin: 20px 0;
+`;
+
+const NoResultsMessage = styled.p`
+  font-size: 18px;
+  color: #856404;
+  margin-bottom: 15px;
+`;
+
+const ResetButton = styled.button`
+  background: #007bff;
+  color: white;
+  padding: 8px 15px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
   font-size: 14px;
   transition: background 0.3s;
 
