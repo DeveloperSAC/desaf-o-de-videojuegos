@@ -3,7 +3,7 @@ import styled from "styled-components";
 import axios from "axios";
 
 // Configuración de la API
-const API_KEY = import.meta.env.VITE_API_KEY;
+const API_KEY = import.meta.env.VITE_RAWG_API_KEY;
 const BASE_URL = "https://api.rawg.io/api";
 
 const PanelFiltros = ({ onApplyFilters }) => {
@@ -11,8 +11,8 @@ const PanelFiltros = ({ onApplyFilters }) => {
     year: "",
     genre: "",
     platform: "",
-    tag: "", // Nuevo filtro
-    developer: "", // Nuevo filtro
+    tag: "",
+    developer: "",
   });
 
   const [years, setYears] = useState([]);
@@ -20,67 +20,72 @@ const PanelFiltros = ({ onApplyFilters }) => {
   const [platforms, setPlatforms] = useState([]);
   const [tags, setTags] = useState([]);
   const [developers, setDevelopers] = useState([]);
-  const [cargandoOpciones, setCargandoOpciones] = useState(true);
+  const [cargandoOpciones, setCargandoOpciones] = useState(false);
 
   useEffect(() => {
     const generateYears = () => {
       const currentYear = new Date().getFullYear();
-      const yearList = Array.from(
-        { length: currentYear - 1999 },
-        (_, i) => currentYear - i
-      );
+      const yearList = Array.from({ length: currentYear - 1999 }, (_, i) => currentYear - i);
       setYears(yearList);
     };
 
-    const fetchOptions = async () => {
+    const fetchOption = async (endpoint) => {
       try {
-        const [genresResponse, platformsResponse, tagsResponse, developersResponse] =
-          await Promise.all([
-            axios.get(`${BASE_URL}/genres?key=${API_KEY}`),
-            axios.get(`${BASE_URL}/platforms?key=${API_KEY}`),
-            axios.get(`${BASE_URL}/tags?key=${API_KEY}`),
-            axios.get(`${BASE_URL}/developers?key=${API_KEY}`),
-          ]);
-
-        setGenres(genresResponse.data.results);
-        setPlatforms(platformsResponse.data.results);
-        setTags(tagsResponse.data.results);
-        setDevelopers(developersResponse.data.results);
+        const response = await axios.get(`${BASE_URL}/${endpoint}?key=${API_KEY}`);
+        console.log(`Datos cargados de ${endpoint}:`, response.data);
+        return response.data.results || [];
       } catch (error) {
-        console.error("Error cargando opciones:", error);
-      } finally {
-        setCargandoOpciones(false);
+        console.error(`Error cargando ${endpoint}:`, error);
+        return [];
       }
     };
 
-    setCargandoOpciones(true);
+    const fetchOptions = async () => {
+      setCargandoOpciones(true);
+      const [genresData, platformsData, tagsData, developersData] = await Promise.all([
+        fetchOption("genres"),
+        fetchOption("platforms"),
+        fetchOption("tags"),
+        fetchOption("developers"),
+      ]);
+      setGenres(genresData);
+      setPlatforms(platformsData);
+      setTags(tagsData);
+      setDevelopers(developersData);
+      setCargandoOpciones(false);
+    };
+
     generateYears();
     fetchOptions();
   }, []);
 
   const cambiarFiltro = (e) => {
     const { name, value } = e.target;
-    setFiltros((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    console.log(`Filtro cambiado: ${name} = ${value}`);
+    setFiltros((prev) => ({ ...prev, [name]: value }));
   };
 
   const aplicarFiltros = (e) => {
     e.preventDefault();
-    onApplyFilters(filtros);
+
+    const filtrosValidos = Object.fromEntries(
+      Object.entries(filtros).filter(([_, value]) => value)
+    );
+
+    if (!Object.keys(filtrosValidos).length) {
+      alert("Por favor, selecciona al menos un filtro.");
+      return;
+    }
+
+    console.log("Filtros válidos enviados:", filtrosValidos);
+    onApplyFilters(filtrosValidos);
   };
 
   const limpiarFiltros = () => {
-    const filtrosLimpios = {
-      year: "",
-      genre: "",
-      platform: "",
-      tag: "",
-      developer: "",
-    };
+    console.log("Limpiando filtros...");
+    const filtrosLimpios = { year: "", genre: "", platform: "", tag: "", developer: "" };
     setFiltros(filtrosLimpios);
-    onApplyFilters(filtrosLimpios);
+    onApplyFilters({});
   };
 
   return (
@@ -99,12 +104,7 @@ const PanelFiltros = ({ onApplyFilters }) => {
 
       <FilterLabel>
         Género:
-        <FilterSelect
-          name="genre"
-          value={filtros.genre}
-          onChange={cambiarFiltro}
-          disabled={cargandoOpciones}
-        >
+        <FilterSelect name="genre" value={filtros.genre} onChange={cambiarFiltro} disabled={cargandoOpciones}>
           <option value="">Todos</option>
           {genres.map((g) => (
             <option key={g.id} value={g.id}>
@@ -116,12 +116,7 @@ const PanelFiltros = ({ onApplyFilters }) => {
 
       <FilterLabel>
         Plataforma:
-        <FilterSelect
-          name="platform"
-          value={filtros.platform}
-          onChange={cambiarFiltro}
-          disabled={cargandoOpciones}
-        >
+        <FilterSelect name="platform" value={filtros.platform} onChange={cambiarFiltro} disabled={cargandoOpciones}>
           <option value="">Todas</option>
           {platforms.map((p) => (
             <option key={p.id} value={p.id}>
@@ -133,12 +128,7 @@ const PanelFiltros = ({ onApplyFilters }) => {
 
       <FilterLabel>
         Etiqueta:
-        <FilterSelect
-          name="tag"
-          value={filtros.tag}
-          onChange={cambiarFiltro}
-          disabled={cargandoOpciones}
-        >
+        <FilterSelect name="tag" value={filtros.tag} onChange={cambiarFiltro} disabled={cargandoOpciones}>
           <option value="">Todas</option>
           {tags.map((t) => (
             <option key={t.id} value={t.id}>
@@ -150,12 +140,7 @@ const PanelFiltros = ({ onApplyFilters }) => {
 
       <FilterLabel>
         Desarrolladora:
-        <FilterSelect
-          name="developer"
-          value={filtros.developer}
-          onChange={cambiarFiltro}
-          disabled={cargandoOpciones}
-        >
+        <FilterSelect name="developer" value={filtros.developer} onChange={cambiarFiltro} disabled={cargandoOpciones}>
           <option value="">Todas</option>
           {developers.map((d) => (
             <option key={d.id} value={d.id}>
@@ -175,62 +160,71 @@ const PanelFiltros = ({ onApplyFilters }) => {
   );
 };
 
-// Estilos
+// Estilos mantenidos sin cambios
 const FilterContainer = styled.form`
+  background-color: #f5f5f5;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 20px;
   display: flex;
   flex-wrap: wrap;
   gap: 15px;
-  background: #f0f0f0;
-  padding: 15px;
-  border-radius: 10px;
-  margin-bottom: 20px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 `;
 
 const FilterLabel = styled.label`
-  flex: 1 1 200px;
-  font-size: 14px;
-  color: #555;
+  display: flex;
+  flex-direction: column;
+  flex: 1 0 200px;
+  font-weight: 500;
+  color: #333;
 `;
 
 const FilterSelect = styled.select`
-  width: 100%;
-  padding: 5px 10px;
-  border-radius: 5px;
-  border: 1px solid #ccc;
+  margin-top: 5px;
+  padding: 8px 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: white;
   font-size: 14px;
+
+  &:disabled {
+    background-color: #f9f9f9;
+    cursor: not-allowed;
+  }
 `;
 
 const ButtonsContainer = styled.div`
   display: flex;
+  flex: 1 0 100%;
   gap: 10px;
+  margin-top: 10px;
 `;
 
 const FilterButton = styled.button`
-  background: #007bff;
+  padding: 10px 15px;
+  background-color: #4a90e2;
   color: white;
-  padding: 8px 15px;
   border: none;
-  border-radius: 5px;
+  border-radius: 4px;
   cursor: pointer;
-  font-size: 14px;
-  transition: background 0.3s;
+  font-weight: 500;
+
   &:hover {
-    background: #0056b3;
+    background-color: #357ae8;
   }
 `;
 
 const ClearButton = styled.button`
-  background: #dc3545;
+  padding: 10px 15px;
+  background-color: #e74c3c;
   color: white;
-  padding: 8px 15px;
   border: none;
-  border-radius: 5px;
+  border-radius: 4px;
   cursor: pointer;
-  font-size: 14px;
-  transition: background 0.3s;
+  font-weight: 500;
+
   &:hover {
-    background: #c82333;
+    background-color: #c0392b;
   }
 `;
 

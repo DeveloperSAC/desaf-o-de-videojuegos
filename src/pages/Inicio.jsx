@@ -3,97 +3,93 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { getGames } from "../services/api";
 import PanelFiltros from "../components/Filtros/PanelFiltros";
-import Buscador from '../components/BarraBusqueda/Buscador';
-import Spinner from '../components/UI/Spinner';
+import Buscador from "../components/BarraBusqueda/Buscador";
+import Spinner from "../components/UI/Spinner";
+import ReactPaginate from "react-paginate";
+
+
 const Inicio = () => {
   const [juegos, setJuegos] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(null);
   const [sinResultados, setSinResultados] = useState(false);
+  const [filtrosActuales, setFiltrosActuales] = useState({});
+  const [paginaActual, setPaginaActual] = useState(1); // Página actual
+  const [totalPaginas, setTotalPaginas] = useState(0); // Total de páginas
 
-  useEffect(() => {
-    const cargarJuegos = async () => {
-      try {
-        const data = await getGames({ ordering: "-metacritic", page_size: 20 });
-        setJuegos(data.results);
-        setSinResultados(data.results.length === 0);
-      } catch (error) {
-        console.error("Error cargando juegos:", error);
-        setError("No pudimos cargar los juegos. Por favor, intenta de nuevo.");
-      } finally {
-        setCargando(false);
-      }
-    };
-
-    cargarJuegos();
-  }, []);
-
-  const manejarFiltros = (filtros) => {
+  // Función genérica para manejar solicitudes y estados
+  const manejarSolicitud = async (params) => {
     setCargando(true);
     setError(null);
     setSinResultados(false);
 
-    const params = {
-      ordering: "-metacritic",
-      page_size: 20,
-    };
+    try {
+      console.log("Parámetros enviados a la API:", { ...params, page: paginaActual });
+      const data = await getGames({ ...params, page: paginaActual }); // Agregar página actual
+      console.log("Datos recibidos:", data);
 
-    if (filtros.year) {
-      params.dates = `${filtros.year}-01-01,${filtros.year}-12-31`;
+      setJuegos(data.results);
+      setSinResultados(data.results.length === 0);
+
+      // Calcular el número total de páginas basado en el resultado de la API
+      const paginas = Math.ceil(data.count / params.page_size);
+      setTotalPaginas(paginas);
+    } catch (error) {
+      console.error("Error en la solicitud:", error);
+      setError("No pudimos completar la solicitud. Por favor, intenta de nuevo.");
+    } finally {
+      setCargando(false);
     }
+  };
 
-    if (filtros.genre) {
-      params.genres = filtros.genre;
-    }
+  // Cargar juegos iniciales al montar el componente
+  useEffect(() => {
+    manejarSolicitud({ ordering: "-metacritic", page_size: 20 });
+  }, [paginaActual]); // Recargar cuando la página actual cambie
 
-    if (filtros.platform) {
-      params.platforms = filtros.platform;
-    }
-
-    if (filtros.tag) {
-      params.tags = filtros.tag;
-    }
-
-    if (filtros.developer) {
-      params.developers = filtros.developer;
-    }
-
-    getGames(params)
-      .then((data) => {
-        setJuegos(data.results);
-        setSinResultados(data.results.length === 0);
-      })
-      .catch((error) => {
-        console.error("Error aplicando filtros:", error);
-        setError("No pudimos aplicar los filtros. Por favor, intenta de nuevo.");
-      })
-      .finally(() => setCargando(false));
+  const manejarFiltros = (filtros) => {
+    console.log("Filtros recibidos:", filtros);
+    const params = construirParametros(filtros, filtrosActuales);
+    setFiltrosActuales(filtros); // Actualizar filtros actuales
+    setPaginaActual(1); // Resetear a la primera página al aplicar filtros
+    manejarSolicitud(params);
   };
 
   const manejarBusqueda = (termino) => {
-    setCargando(true);
-    setError(null);
-    setSinResultados(false);
-
-    const params = {
-      ordering: "-metacritic",
-      page_size: 20,
-      search: termino,
-    };
-
-    getGames(params)
-      .then((data) => {
-        setJuegos(data.results);
-        setSinResultados(data.results.length === 0);
-      })
-      .catch((error) => {
-        console.error("Error en la búsqueda:", error);
-        setError("No pudimos realizar la búsqueda. Por favor, intenta de nuevo.");
-      })
-      .finally(() => setCargando(false));
+    console.log("Término de búsqueda:", termino);
+    const nuevosFiltros = { ...filtrosActuales, search: termino };
+    const params = construirParametros(nuevosFiltros, {});
+    setFiltrosActuales(nuevosFiltros);
+    setPaginaActual(1); // Resetear a la primera página al buscar
+    manejarSolicitud(params);
   };
 
-  // Actualiza la condición de carga
+  const resetearFiltros = () => {
+    console.log("Reseteando filtros...");
+    setFiltrosActuales({});
+    setPaginaActual(1); // Resetear a la primera página al limpiar filtros
+    manejarSolicitud({ ordering: "-metacritic", page_size: 20 });
+  };
+
+  const construirParametros = (filtros, filtrosPrevios) => {
+    const params = { ordering: "-metacritic", page_size: 20 };
+
+    if (filtros.year) params.dates = `${filtros.year}-01-01,${filtros.year}-12-31`;
+    if (filtros.genre) params.genres = filtros.genre;
+    if (filtros.platform) params.platforms = filtros.platform;
+    if (filtros.tag) params.tags = filtros.tag;
+    if (filtros.developer) params.developers = filtros.developer;
+
+    if (filtrosPrevios.search) params.search = filtrosPrevios.search;
+
+    return params;
+  };
+
+  const manejarCambioDePagina = (pagina) => {
+    console.log("Cambiando a la página:", pagina);
+    setPaginaActual(pagina);
+  };
+
   if (cargando) return <Spinner height="300px" />;
   if (error) return <ErrorMessage>{error}</ErrorMessage>;
 
@@ -102,75 +98,101 @@ const Inicio = () => {
       <Title>Mejores Videojuegos</Title>
       <Buscador onBuscar={manejarBusqueda} />
       <PanelFiltros onApplyFilters={manejarFiltros} />
-      
+  
       {sinResultados ? (
         <NoResultsContainer>
-          <NoResultsMessage>
-            No se encontraron juegos con los filtros seleccionados.
-          </NoResultsMessage>
-          <ResetButton onClick={() => manejarFiltros({})}>
-            Ver todos los juegos
-          </ResetButton>
+          <NoResultsMessage>No se encontraron juegos con los filtros seleccionados.</NoResultsMessage>
+          <ResetButton onClick={resetearFiltros}>Ver todos los juegos</ResetButton>
         </NoResultsContainer>
       ) : (
-        <GameList>
-          {juegos.map((juego) => (
-            <GameItem key={juego.id}>
-              <GameImage src={juego.background_image} alt={juego.name} />
-              <GameTitle>{juego.name}</GameTitle>
-              <p>Puntuación: {juego.metacritic || "No disponible"}</p>
-              <DetailsButton to={`/juego/${juego.id}`}>Detalles</DetailsButton>
-            </GameItem>
-          ))}
-        </GameList>
+        <>
+          {/* Mapeo único para los videojuegos */}
+          <GameList>
+            {juegos.map((juego) => (
+              <GameItem key={juego.id}>
+                <GameImage src={juego.background_image} alt={juego.name} />
+                <GameTitle>{juego.name}</GameTitle>
+                <p>Puntuación: {juego.metacritic || "No disponible"}</p>
+                {/* Botón de detalles */}
+                <DetailsButton to={`/juego/${juego.id}`}>Detalles</DetailsButton>
+              </GameItem>
+            ))}
+          </GameList>
+  
+          {/* Paginación al final */}
+          <PaginationContainer>
+            <ReactPaginate
+              previousLabel={"← Anterior"}
+              nextLabel={"Siguiente →"}
+              breakLabel={"..."}
+              pageCount={totalPaginas}
+              marginPagesDisplayed={2}
+              pageRangeDisplayed={3}
+              onPageChange={({ selected }) => manejarCambioDePagina(selected + 1)}
+              containerClassName={"pagination"}
+              activeClassName={"active"}
+            />
+          </PaginationContainer>
+        </>
       )}
     </Container>
   );
-};
+  };
+  
 
-// Estilos
+// Componentes estilizados para la paginación
+const PaginationContainer = styled.div`
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+
+  .pagination {
+    display: flex;
+    list-style: none;
+    gap: 10px;
+  }
+
+  .pagination li {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+
+  .pagination .active {
+    background-color: #4a90e2;
+    color: white;
+  }
+`;
+
 const Container = styled.div`
-  padding: 20px;
   max-width: 1200px;
   margin: 0 auto;
-  font-family: Arial, sans-serif;
+  padding: 20px;
 `;
 
 const Title = styled.h1`
   text-align: center;
+  margin-bottom: 30px;
   color: #333;
-  margin-bottom: 20px;
 `;
 
-const GameList = styled.ul`
+const GameList = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
   gap: 20px;
-  list-style: none;
-  padding: 0;
+  margin-top: 20px;
 `;
 
-const GameItem = styled.li`
-  background: #f9f9f9;
+const GameItem = styled.div`
   border: 1px solid #ddd;
-  border-radius: 10px;
+  border-radius: 8px;
   overflow: hidden;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  transition: transform 0.2s;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s;
 
   &:hover {
     transform: translateY(-5px);
-  }
-`;
-
-const GameTitle = styled.h2`
-  font-size: 18px;
-  margin: 10px;
-  color: #444;
-  transition: color 0.3s;
-
-  &:hover {
-    color: #007bff;
   }
 `;
 
@@ -180,65 +202,60 @@ const GameImage = styled.img`
   object-fit: cover;
 `;
 
+const GameTitle = styled.h3`
+  padding: 10px;
+  margin: 0;
+  color: #333;
+`;
+
 const DetailsButton = styled(Link)`
-  display: inline-block;
-  background: #007bff;
+  display: block;
+  text-align: center;
+  background-color: #4a90e2;
   color: white;
-  padding: 8px 12px;
+  padding: 8px 0;
   text-decoration: none;
-  border-radius: 5px;
-  font-size: 14px;
-  transition: background 0.3s;
+  transition: background-color 0.2s;
 
   &:hover {
-    background: #0056b3;
+    background-color: #357ae8;
   }
-`;
-
-const LoadingMessage = styled.div`
-  text-align: center;
-  padding: 50px;
-  font-size: 18px;
-  color: #666;
-`;
-
-const ErrorMessage = styled.div`
-  background: #ffebee;
-  color: #c62828;
-  padding: 15px;
-  border-radius: 8px;
-  text-align: center;
-  margin: 20px auto;
-  max-width: 800px;
 `;
 
 const NoResultsContainer = styled.div`
   text-align: center;
-  padding: 30px;
-  background: #fff8e1;
-  border-radius: 8px;
-  margin: 20px 0;
+  margin-top: 40px;
 `;
 
 const NoResultsMessage = styled.p`
   font-size: 18px;
-  color: #856404;
-  margin-bottom: 15px;
+  color: #666;
+  margin-bottom: 20px;
 `;
 
 const ResetButton = styled.button`
-  background: #007bff;
+  background-color: #4a90e2;
   color: white;
-  padding: 8px 15px;
   border: none;
-  border-radius: 5px;
+  padding: 10px 15px;
+  border-radius: 4px;
   cursor: pointer;
-  font-size: 14px;
-  transition: background 0.3s;
+  font-size: 16px;
+  transition: background-color 0.2s;
 
   &:hover {
-    background: #0056b3;
+    background-color: #357ae8;
   }
+`;
+
+const ErrorMessage = styled.div`
+  text-align: center;
+  color: #e74c3c;
+  font-size: 18px;
+  margin-top: 40px;
+  padding: 20px;
+  background-color: #ffeaea;
+  border-radius: 8px;
 `;
 
 export default Inicio;
